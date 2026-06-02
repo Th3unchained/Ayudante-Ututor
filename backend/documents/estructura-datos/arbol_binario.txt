@@ -1,0 +1,15 @@
+https://hhmosquera.wordpress.com/arbolesbinarios/
+https://medium.com/@matematicasdiscretaslibro/cap%C3%ADtulo-12-teoria-de-arboles-binarios-f731baf470c0
+
+
+ABB
+https://www.utm.mx/~rruiz/cursos/ED/material/ABB.pdf
+https://www6.uniovi.es/usr/cesar/Uned/EDA/Apuntes/TAD_apUM_04.pdf
+
+
+https://tecpro-digital.com/ejemplos-de-arboles-binarios-en-c/
+
+
+
+AVL
+https://www.youtube.com/watch?v=r72a5MxQaJQ

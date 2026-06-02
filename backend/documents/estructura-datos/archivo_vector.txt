@@ -1,0 +1,110 @@
+#include <iostream>
+#include <stdlib.h>
+#include <fstream>
+#include <vector>
+#include <sstream>
+using namespace std;
+
+struct vent
+{
+int anio;
+int mes;
+int dia;
+int stock;
+int ventas;
+};
+
+
+//función lleva a vector
+vector<string> split(string lineaASeparar, char delimitador) 
+{
+    vector<string> vector_interno;      //#include <vector>
+    stringstream linea(lineaASeparar);  // #include <sstream> 
+    string parteDelString;
+
+    while(getline(linea, parteDelString, delimitador))
+        vector_interno.push_back(parteDelString);
+
+    return vector_interno;
+}
+
+void leer(string nombreArchivo, vent v[], int &indice)
+    {
+    ifstream archivo;
+    archivo.open(nombreArchivo.c_str(), ios::in);
+
+    if(archivo.is_open())
+    {
+        string linea;
+        bool primeraLinea =true;
+
+        while (getline(archivo, linea))
+        {
+            //saltamos la primera línea que contiene los nombres de las columnas
+            if(primeraLinea) 
+            {
+                primeraLinea = false;
+                continue;
+            }
+
+            vector<string> items= split(linea, ';');
+
+            v[indice].anio = atoi(items[0].c_str());
+            cout<<v[indice].anio<<" - ";
+            v[indice].mes = atoi(items[1].c_str());
+            cout<<v[indice].mes<<" - ";
+            v[indice].dia = atoi(items[2].c_str());
+            cout<<v[indice].dia<<" - ";
+            v[indice].stock = atoi(items[3].c_str());
+            cout<<v[indice].stock<<" - ";
+            v[indice].ventas = atoi(items[4].c_str());
+            cout<<v[indice].ventas<<endl;
+            
+            indice++;
+        }
+        cout <<"***Se han procesado "<< indice <<" registros"<<endl;
+    } 
+    else
+         {
+        cout << "Error en la apertura del archivo "+nombreArchivo;
+         }
+    }
+
+void calcula(string nombreArchivoResumen, vent v[], int indice){
+    
+    if(indice <= 0)
+        return; 
+        
+    ofstream archivo;
+    archivo.open(nombreArchivoResumen, ios::out);
+
+    if(archivo.is_open()) {
+        //generamos cabecera
+        archivo << "anio;mes;dia;stok_fin;" << endl;
+
+        for(int i = 0; i< indice; i++) {
+            archivo << v[i].anio << ';';
+            archivo << v[i].mes  << ';';
+            archivo << v[i].dia  << ';';
+            archivo << v[i].stock - v[i].ventas << ';' << endl;
+        }
+
+        archivo.close();
+        cout <<"archivo creado con éxito"<<endl;
+    } else {
+        cout <<"error";
+    }
+
+}
+
+
+#define MAX_REG 100
+int main() 
+{
+    vent vec_ven[MAX_REG];
+    int indice = 0;
+    string Archivo="pru.txt";
+    leer(Archivo, vec_ven, indice);
+    calcula("disponible.txt", vec_ven, indice);
+    return 0;
+}
