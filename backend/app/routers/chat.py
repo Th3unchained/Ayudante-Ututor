@@ -10,6 +10,7 @@ from app.security import get_current_user
 from app.services.gemini_service import generate_tutor_answer
 from app.services.embedding_service import generate_embedding
 
+
 router = APIRouter(
     prefix="/chat",
     tags=["Chat"],
@@ -362,25 +363,6 @@ def ask_tutor(
             question=question,
             db=db,
         )
-
-        user_message = create_message(
-            conversation_id=str(conversation.id),
-            role="user",
-            content=question,
-            db=db,
-        )
-
-        context_chunks = get_context_chunks(
-            course_id=payload.course_id,
-        question=question,
-        db=db,
-)
-
-answer = generate_tutor_answer(
-    question=question,
-    course_name=course.name,
-    context_chunks=context_chunks,
-)
 
         answer = generate_tutor_answer(
             question=question,
