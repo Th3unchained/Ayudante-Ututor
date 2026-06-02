@@ -195,7 +195,7 @@ INSERT INTO messages (
 )
 VALUES
 (
-    ''11111111-aaaa-1111-aaaa-111111111111'',
+    '11111111-aaaa-1111-aaaa-111111111111',
     'c1111111-1111-1111-1111-111111111111',
     'user',
     '¿Cuál es la diferencia entre una pila y una cola?',
@@ -204,7 +204,7 @@ VALUES
     0
 ),
 (
-    ''22222222-aaaa-2222-aaaa-222222222222'',
+    '22222222-aaaa-2222-aaaa-222222222222',
     'c1111111-1111-1111-1111-111111111111',
     'assistant',
     'Una pila usa el principio LIFO, es decir, el último elemento en entrar es el primero en salir. Una cola usa el principio FIFO, donde el primer elemento en entrar es el primero en salir.',
