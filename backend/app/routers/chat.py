@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -6,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.security import get_current_user
 from app.services.gemini_service import generate_tutor_answer
+from app.services.embedding_service import generate_embedding
 
 router = APIRouter(
     prefix="/chat",
@@ -213,7 +216,16 @@ def create_message(
     return message
 
 
-def get_context_chunks(course_id: str, db: Session):
+def format_vector(values: list[float]) -> str:
+    return "[" + ",".join(str(value) for value in values) + "]"
+
+
+def get_context_chunks(course_id: str, question: str, db: Session):
+    top_k = int(os.getenv("RAG_TOP_K", "5"))
+
+    question_embedding = generate_embedding(question)
+    question_vector = format_vector(question_embedding)
+
     query = text("""
         SELECT
             dc.id AS chunk_id,
@@ -222,18 +234,24 @@ def get_context_chunks(course_id: str, db: Session):
             dc.chunk_index,
             dc.content,
             dc.page_number,
-            dc.section_title
+            dc.section_title,
+            1 - (dc.embedding_vector <=> CAST(:question_embedding AS vector)) AS similarity_score
         FROM document_chunks dc
         JOIN documents d ON d.id = dc.document_id
         WHERE dc.course_id = :course_id
           AND d.status = 'processed'
-        ORDER BY dc.chunk_index ASC
-        LIMIT 6;
+          AND dc.embedding_vector IS NOT NULL
+        ORDER BY dc.embedding_vector <=> CAST(:question_embedding AS vector)
+        LIMIT :top_k;
     """)
 
     result = db.execute(
         query,
-        {"course_id": course_id},
+        {
+            "course_id": course_id,
+            "question_embedding": question_vector,
+            "top_k": top_k,
+        },
     )
 
     chunks = []
@@ -247,6 +265,9 @@ def get_context_chunks(course_id: str, db: Session):
             "content": row.content,
             "page_number": row.page_number,
             "section_title": row.section_title,
+            "similarity_score": float(row.similarity_score)
+            if row.similarity_score is not None
+            else None,
         })
 
     return chunks
@@ -273,7 +294,7 @@ def save_message_sources(message_id: str, context_chunks: list[dict], db: Sessio
             :document_name,
             :page_number,
             :section_title,
-            NULL
+            :similarity_score
         );
     """)
 
@@ -287,6 +308,7 @@ def save_message_sources(message_id: str, context_chunks: list[dict], db: Sessio
                 "document_name": chunk["document_name"],
                 "page_number": chunk["page_number"],
                 "section_title": chunk["section_title"],
+                "similarity_score": chunk.get("similarity_score"),
             },
         )
 
@@ -337,8 +359,28 @@ def ask_tutor(
 
         context_chunks = get_context_chunks(
             course_id=payload.course_id,
+            question=question,
             db=db,
         )
+
+        user_message = create_message(
+            conversation_id=str(conversation.id),
+            role="user",
+            content=question,
+            db=db,
+        )
+
+        context_chunks = get_context_chunks(
+            course_id=payload.course_id,
+        question=question,
+        db=db,
+)
+
+answer = generate_tutor_answer(
+    question=question,
+    course_name=course.name,
+    context_chunks=context_chunks,
+)
 
         answer = generate_tutor_answer(
             question=question,
@@ -350,7 +392,7 @@ def ask_tutor(
             conversation_id=str(conversation.id),
             role="assistant",
             content=answer,
-            model_name="gemini-2.5-flash",
+            model_name=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
             db=db,
         )
 
@@ -393,6 +435,7 @@ def ask_tutor(
             "document_name": chunk["document_name"],
             "page_number": chunk["page_number"],
             "section_title": chunk["section_title"],
+            "similarity_score": chunk.get("similarity_score"),
         })
 
     return {
