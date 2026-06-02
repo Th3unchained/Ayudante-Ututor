@@ -13,7 +13,13 @@ export const messageService = {
       tokensInput: message.tokens_input,
       tokensOutput: message.tokens_output,
       createdAt: message.created_at,
-      sources: [],
+      sources: (message.sources ?? []).map((source) => ({
+        documentId: source.document_id,
+        chunkId: source.chunk_id,
+        documentName: source.document_name,
+        pageNumber: source.page_number,
+        sectionTitle: source.section_title,
+        })),
     }));
   },
 

@@ -3,6 +3,10 @@ import React from "react";
 export function MessageBubble({ message }) {
   const isUser = message.role === "user";
 
+  const validSources = (message.sources ?? []).filter(
+    (source) => source.documentName || source.sectionTitle || source.pageNumber
+  );
+
   return (
     <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
       <div
@@ -22,25 +26,27 @@ export function MessageBubble({ message }) {
 
         <p className="whitespace-pre-wrap text-sm leading-7">{message.text}</p>
 
-        {!isUser && message.sources?.length > 0 && (
+        {!isUser && validSources.length > 0 && (
           <div className="mt-5 rounded-2xl border border-teal-200 bg-gradient-to-r from-cyan-50 to-emerald-50 p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-teal-800">
               Fuentes utilizadas
             </p>
 
             <ul className="mt-3 space-y-2 text-xs text-slate-600">
-              {message.sources.map((source, index) => (
+              {validSources.map((source, index) => (
                 <li
-                  key={`${source.document}-${index}`}
+                  key={source.chunkId ?? `${source.documentId}-${index}`}
                   className="rounded-xl bg-white/80 px-3 py-2"
                 >
                   <span className="font-semibold text-slate-800">
-                    {source.document}
+                    {source.documentName ?? "Documento del curso"}
                   </span>
-                  <span>
-                    {" "}
-                    · {source.section} · pág. {source.page}
-                  </span>
+
+                  {source.sectionTitle && (
+                    <span> · {source.sectionTitle}</span>
+                  )}
+
+                  {source.pageNumber && <span> · pág. {source.pageNumber}</span>}
                 </li>
               ))}
             </ul>

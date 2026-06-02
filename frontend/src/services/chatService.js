@@ -1,5 +1,15 @@
 import { apiRequest } from "./apiClient";
 
+function mapSource(source) {
+  return {
+    documentId: source.document_id,
+    chunkId: source.chunk_id,
+    documentName: source.document_name,
+    pageNumber: source.page_number,
+    sectionTitle: source.section_title,
+  };
+}
+
 export const chatService = {
   askTutor: async ({
     courseId,
@@ -40,7 +50,7 @@ export const chatService = {
         text: data.assistant_message.content,
         modelName: data.assistant_message.model_name,
         createdAt: data.assistant_message.created_at,
-        sources: data.assistant_message.sources ?? [],
+        sources: (data.assistant_message.sources ?? []).map(mapSource),
       },
     };
   },

@@ -1,5 +1,15 @@
 import { apiRequest } from "./apiClient";
 
+function mapSource(source) {
+  return {
+    documentId: source.document_id,
+    chunkId: source.chunk_id,
+    documentName: source.document_name,
+    pageNumber: source.page_number,
+    sectionTitle: source.section_title,
+  };
+}
+
 export const conversationService = {
   getCourseConversations: async (courseId) => {
     const data = await apiRequest(`/courses/${courseId}/conversations`);
@@ -62,7 +72,7 @@ export const conversationService = {
         tokensInput: message.tokens_input,
         tokensOutput: message.tokens_output,
         createdAt: message.created_at,
-        sources: message.sources ?? [],
+        sources: (message.sources ?? []).map(mapSource),
       })),
     };
   },
