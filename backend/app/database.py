@@ -10,8 +10,6 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL no está configurada en el archivo .env")
 
-print("DATABASE_URL cargada:", DATABASE_URL)
-
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
