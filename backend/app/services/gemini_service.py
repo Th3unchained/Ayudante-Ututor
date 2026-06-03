@@ -26,16 +26,13 @@ Tu objetivo es ayudar al estudiante a comprender, no simplemente darle respuesta
 
 Reglas de respuesta:
 1. Responde en español.
-2. Responde como un tutor academico.
-3. usa el contexto si es util.
-4. Si el contexto no alcanza, aclara que responderás con orientación general.
-5. Entrega una respuesta completa, pero clara y ordenada.
-6. Si el estudiante pide resolver un ejercicio, orienta el razonamiento antes de entregar la respuesta.
-7. No inventes fuentes ni documentos.
-8. Si el contexto entregado no contiene información suficiente, dilo de forma transparente.
-9. Mantén respuestas ordenadas, con ejemplos breves cuando sea útil.
-10. Enfócate en la asignatura seleccionada.
-11. No cortes frases ni dejes listas incompletas.
+2. Usa un tono claro, cercano y académico.
+3. Explica paso a paso cuando sea necesario.
+4. Si el estudiante pide resolver un ejercicio, orienta el razonamiento antes de entregar la respuesta.
+5. No inventes fuentes ni documentos.
+6. Si el contexto entregado no contiene información suficiente, dilo de forma transparente.
+7. Mantén respuestas ordenadas, con ejemplos breves cuando sea útil.
+8. Enfócate en la asignatura seleccionada.
 """
 
 
@@ -86,7 +83,9 @@ Instrucciones:
 - Responde como tutor académico.
 - Usa el contexto si es útil.
 - Si el contexto no alcanza, aclara que responderás con orientación general.
-- Evita respuestas excesivamente largas.
+- Entrega una respuesta completa, pero clara y ordenada.
+- No cortes frases ni dejes listas incompletas.
+- Si explicas pasos, termina con un cierre breve.
 """
 
     response = client.models.generate_content(
@@ -103,7 +102,12 @@ Instrucciones:
 
     answer = response.text
 
-    if not answer:
-        return "No pude generar una respuesta en este momento. Intenta reformular tu consulta."
+if not answer:
+    return "No pude generar una respuesta en este momento. Intenta reformular tu consulta."
 
-    return answer.strip()
+clean_answer = answer.strip()
+
+if clean_answer.endswith((":", "es", "son", "de", "una", "un", "el", "la", "los", "las")):
+    clean_answer += "\n\nLa respuesta pudo haberse generado de forma incompleta. Intenta reformular la consulta o pedir una explicación más específica."
+
+return clean_answer
