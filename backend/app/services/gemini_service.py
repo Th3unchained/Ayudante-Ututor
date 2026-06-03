@@ -11,13 +11,12 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 GEMINI_TEMPERATURE = float(os.getenv("GEMINI_TEMPERATURE", "0.4"))
 GEMINI_TOP_P = float(os.getenv("GEMINI_TOP_P", "0.9"))
-GEMINI_MAX_OUTPUT_TOKENS = int(os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "700"))
+GEMINI_MAX_OUTPUT_TOKENS = int(os.getenv("GEMINI_MAX_OUTPUT_TOKENS", "1500"))
 
 if not GEMINI_API_KEY:
     raise ValueError("Falta GEMINI_API_KEY en el archivo .env")
 
 client = genai.Client(api_key=GEMINI_API_KEY)
-
 
 SYSTEM_INSTRUCTION = """
 Eres UTutor, un tutor académico para estudiantes universitarios.
@@ -27,12 +26,17 @@ Tu objetivo es ayudar al estudiante a comprender, no simplemente darle respuesta
 Reglas de respuesta:
 1. Responde en español.
 2. Usa un tono claro, cercano y académico.
-3. Explica paso a paso cuando sea necesario.
-4. Si el estudiante pide resolver un ejercicio, orienta el razonamiento antes de entregar la respuesta.
-5. No inventes fuentes ni documentos.
-6. Si el contexto entregado no contiene información suficiente, dilo de forma transparente.
-7. Mantén respuestas ordenadas, con ejemplos breves cuando sea útil.
-8. Enfócate en la asignatura seleccionada.
+3. Responde como un tutor académico.
+4. Usa el contexto si es útil.
+5. Si el contexto no alcanza, aclara que responderás con orientación general.
+6. Entrega una respuesta completa, clara y ordenada.
+7. Si el estudiante pide resolver un ejercicio, orienta el razonamiento antes de entregar la respuesta.
+8. No inventes fuentes ni documentos.
+9. Si el contexto entregado no contiene información suficiente, dilo de forma transparente.
+10. Mantén respuestas ordenadas, con ejemplos breves cuando sea útil.
+11. Enfócate en la asignatura seleccionada.
+12. No cortes frases ni dejes listas incompletas.
+13. Si explicas pasos, termina con un cierre breve.
 """
 
 
@@ -83,7 +87,7 @@ Instrucciones:
 - Responde como tutor académico.
 - Usa el contexto si es útil.
 - Si el contexto no alcanza, aclara que responderás con orientación general.
-- Entrega una respuesta completa, pero clara y ordenada.
+- Entrega una respuesta completa, clara y ordenada.
 - No cortes frases ni dejes listas incompletas.
 - Si explicas pasos, termina con un cierre breve.
 """
@@ -102,12 +106,15 @@ Instrucciones:
 
     answer = response.text
 
-if not answer:
-    return "No pude generar una respuesta en este momento. Intenta reformular tu consulta."
+    if not answer:
+        return "No pude generar una respuesta en este momento. Intenta reformular tu consulta."
 
-clean_answer = answer.strip()
+    clean_answer = answer.strip()
 
-if clean_answer.endswith((":", "es", "son", "de", "una", "un", "el", "la", "los", "las")):
-    clean_answer += "\n\nLa respuesta pudo haberse generado de forma incompleta. Intenta reformular la consulta o pedir una explicación más específica."
+    if clean_answer.endswith((":", "es", "son", "de", "una", "un", "el", "la", "los", "las")):
+        clean_answer += (
+            "\n\nLa respuesta pudo haberse generado de forma incompleta. "
+            "Intenta reformular la consulta o pedir una explicación más específica."
+        )
 
-return clean_answer
+    return clean_answer
