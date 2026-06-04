@@ -1,6 +1,5 @@
 import React from "react";
 import { UserMenu } from "../components/UserMenu";
-import { useAuth } from "../context/AuthContext";
 
 export function CourseSelectionPage({
   courses = [],
@@ -11,7 +10,6 @@ export function CourseSelectionPage({
   user,
 }) {
   const courseList = Array.isArray(courses) ? courses : [];
-  const { user } = useAuth();
 
   return (
     <main className="h-screen w-screen overflow-hidden bg-gradient-to-br from-cyan-100 via-teal-50 to-emerald-100 p-3">
