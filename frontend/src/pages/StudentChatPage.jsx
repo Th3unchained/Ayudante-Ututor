@@ -8,6 +8,7 @@ import { folderService } from "../services/folderService";
 import { conversationService } from "../services/conversationService";
 import { messageService } from "../services/messageService";
 import { chatService } from "../services/chatService";
+import { useAuth } from "../context/AuthContext";
 
 const initialAssistantMessage = {
   id: "initial-message",
@@ -32,6 +33,7 @@ export function StudentChatPage({ selectedCourse, onLogout, onBackToCourses }) {
   const [errorMessage, setErrorMessage] = useState("");
 
   const courseId = selectedCourse?.id;
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!courseId) return;
@@ -42,7 +44,7 @@ export function StudentChatPage({ selectedCourse, onLogout, onBackToCourses }) {
         setSaveMessage("");
 
         const [loadedFolders, loadedConversations] = await Promise.all([
-          folderService.getFolders(courseId),
+          folderService.getCourseFolders(courseId),
           conversationService.getCourseConversations(courseId),
         ]);
 
@@ -66,6 +68,21 @@ export function StudentChatPage({ selectedCourse, onLogout, onBackToCourses }) {
     loadInitialData();
   }, [courseId]);
 
+  const refreshSidebarData = async () => {
+    const [refreshedFolders, refreshedConversations] = await Promise.all([
+      folderService.getCourseFolders(courseId),
+      conversationService.getCourseConversations(courseId),
+    ]);
+
+    setFolders(refreshedFolders);
+    setConversations(refreshedConversations);
+
+    return {
+      refreshedFolders,
+      refreshedConversations,
+    };
+  };
+
   const handleCreateFolder = async (name) => {
     try {
       setErrorMessage("");
@@ -82,6 +99,38 @@ export function StudentChatPage({ selectedCourse, onLogout, onBackToCourses }) {
       setErrorMessage(error.message);
     }
   };
+
+const handleDeleteFolder = async (folderId) => {
+  try {
+    setErrorMessage("");
+    setSaveMessage("");
+
+    await folderService.deleteFolder({
+      courseId,
+      folderId,
+    });
+
+    const { refreshedConversations } = await refreshSidebarData();
+
+    if (activeFolderId === folderId) {
+      setActiveFolderId(null);
+    }
+
+    const activeConversationStillExists = refreshedConversations.some(
+      (conversation) => conversation.id === activeConversationId
+    );
+
+    if (!activeConversationStillExists) {
+      setActiveConversationId(null);
+      setMessages([initialAssistantMessage]);
+      setInput("");
+    }
+
+    setSaveMessage("Carpeta eliminada correctamente.");
+  } catch (error) {
+    setErrorMessage(error.message || "No se pudo eliminar la carpeta.");
+  }
+};
 
   const handleSelectFolder = (folderId) => {
     setActiveFolderId(folderId);
@@ -115,10 +164,13 @@ export function StudentChatPage({ selectedCourse, onLogout, onBackToCourses }) {
         isSaved: true,
       });
 
-      setConversations((currentConversations) => [
-        newConversation,
-        ...currentConversations,
-      ]);
+      setConversations((currentConversations) => {
+        const withoutDuplicate = currentConversations.filter(
+          (conversation) => conversation.id !== newConversation.id
+        );
+
+        return [newConversation, ...withoutDuplicate];
+      });
 
       setActiveConversationId(newConversation.id);
 
@@ -146,6 +198,7 @@ export function StudentChatPage({ selectedCourse, onLogout, onBackToCourses }) {
   const handleSaveConversation = async (folderId) => {
     try {
       setErrorMessage("");
+      setSaveMessage("");
 
       let conversationId = activeConversationId;
 
@@ -157,36 +210,24 @@ export function StudentChatPage({ selectedCourse, onLogout, onBackToCourses }) {
           isSaved: true,
         });
 
-        setConversations((currentConversations) => [
-          newConversation,
-          ...currentConversations,
-        ]);
-
-        setActiveConversationId(newConversation.id);
         conversationId = newConversation.id;
+        setActiveConversationId(newConversation.id);
       } else {
-        const updatedConversation = await conversationService.updateConversation({
+        await conversationService.updateConversation({
           conversationId,
           folderId,
           isSaved: true,
         });
-
-        setConversations((currentConversations) =>
-          currentConversations.map((conversation) =>
-            conversation.id === conversationId
-              ? {
-                  ...conversation,
-                  folderId: updatedConversation.folderId,
-                  folderName: updatedConversation.folderName,
-                  isSaved: updatedConversation.isSaved,
-                  updatedAt: updatedConversation.updatedAt,
-                }
-              : conversation
-          )
-        );
       }
 
+      const { refreshedConversations } = await refreshSidebarData();
+
+      const savedConversation = refreshedConversations.find(
+        (conversation) => conversation.id === conversationId
+      );
+
       setActiveFolderId(folderId);
+      setActiveConversationId(savedConversation?.id ?? conversationId);
       setIsSaveModalOpen(false);
       setSaveMessage("Consulta guardada correctamente.");
     } catch (error) {
@@ -195,12 +236,6 @@ export function StudentChatPage({ selectedCourse, onLogout, onBackToCourses }) {
   };
 
   const handleDeleteConversation = async (conversationId) => {
-    const confirmed = window.confirm(
-      "¿Seguro que deseas eliminar esta consulta? Esta acción no se puede deshacer."
-    );
-
-    if (!confirmed) return;
-
     try {
       setErrorMessage("");
       setSaveMessage("");
@@ -225,58 +260,64 @@ export function StudentChatPage({ selectedCourse, onLogout, onBackToCourses }) {
     }
   };
 
-const handleSend = async () => {
-  const question = input.trim();
+  const handleSend = async () => {
+    const question = input.trim();
 
-  if (!question || isSending || !courseId) {
-    return;
-  }
+    if (!question || isSending || !courseId) {
+      return;
+    }
 
-  try {
-    setIsSending(true);
-    setErrorMessage("");
-    setSaveMessage("");
+    try {
+      setIsSending(true);
+      setErrorMessage("");
+      setSaveMessage("");
 
-    setInput("");
+      setInput("");
 
-    const response = await chatService.askTutor({
-      courseId,
-      question,
-      conversationId: activeConversationId,
-      folderId: activeFolderId,
-    });
+      const response = await chatService.askTutor({
+        courseId,
+        question,
+        conversationId: activeConversationId,
+        folderId: activeFolderId,
+      });
 
-    if (response.conversation.wasCreated) {
-      setConversations((currentConversations) => [
-        {
+      if (response.conversation.wasCreated) {
+        const newConversation = {
           id: response.conversation.id,
           title: response.conversation.title,
           folderId: response.conversation.folderId,
+          folderName: response.conversation.folderName ?? null,
           isSaved: response.conversation.isSaved,
           createdAt: response.conversation.createdAt,
           updatedAt: response.conversation.updatedAt,
-        },
-        ...currentConversations,
+        };
+
+        setConversations((currentConversations) => {
+          const withoutDuplicate = currentConversations.filter(
+            (conversation) => conversation.id !== newConversation.id
+          );
+
+          return [newConversation, ...withoutDuplicate];
+        });
+
+        setActiveConversationId(response.conversation.id);
+      }
+
+      setMessages((currentMessages) => [
+        ...currentMessages.filter(
+          (message) =>
+            message.id !== "initial-message" &&
+            message.id !== "new-conversation-message"
+        ),
+        response.userMessage,
+        response.assistantMessage,
       ]);
-
-      setActiveConversationId(response.conversation.id);
+    } catch (error) {
+      setErrorMessage(error.message);
+    } finally {
+      setIsSending(false);
     }
-
-    setMessages((currentMessages) => [
-      ...currentMessages.filter(
-        (message) =>
-          message.id !== "initial-message" &&
-          message.id !== "new-conversation-message"
-      ),
-      response.userMessage,
-      response.assistantMessage,
-    ]);
-  } catch (error) {
-    setErrorMessage(error.message);
-  } finally {
-    setIsSending(false);
-  }
-};
+  };
 
   return (
     <main className="h-screen w-screen overflow-hidden bg-gradient-to-br from-cyan-100 via-teal-50 to-emerald-100 p-3">
@@ -287,19 +328,22 @@ const handleSend = async () => {
 
         <div className="relative z-10 flex h-full min-h-0 flex-col">
           <Header
-            courseName={selectedCourse?.name}
+            course={selectedCourse}
+            user={user}
             onLogout={onLogout}
             onBackToCourses={onBackToCourses}
           />
 
           <div className="flex min-h-0 flex-1">
             <Sidebar
+              course={selectedCourse}
               folders={folders}
               activeFolderId={activeFolderId}
               conversations={conversations}
               activeConversationId={activeConversationId}
               onSelectFolder={handleSelectFolder}
               onCreateFolder={handleCreateFolder}
+              onDeleteFolder={handleDeleteFolder}
               onSelectConversation={handleSelectConversation}
               onDeleteConversation={handleDeleteConversation}
               onNewConversation={handleNewConversation}
@@ -363,7 +407,8 @@ const handleSend = async () => {
                           Conversación
                         </p>
                         <p className="mt-1 text-xs text-slate-500">
-                          Los mensajes ya se guardan en PostgreSQL.
+                          Los mensajes se guardan en PostgreSQL y usan contexto
+                          del material del curso.
                         </p>
                       </div>
 
@@ -382,7 +427,7 @@ const handleSend = async () => {
                       {isSending && (
                         <div className="flex justify-start">
                           <div className="rounded-2xl border border-teal-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm">
-                            Generando respuesta simulada...
+                            Generando respuesta del tutor...
                           </div>
                         </div>
                       )}

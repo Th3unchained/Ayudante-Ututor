@@ -6,62 +6,85 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.security import get_current_user
 
+
 router = APIRouter(
-    prefix="/courses",
+    prefix="/courses/{course_id}/folders",
     tags=["Folders"],
 )
 
 
-class CreateFolderRequest(BaseModel):
+class FolderCreateRequest(BaseModel):
     name: str
 
 
-@router.get("/{course_id}/folders")
+@router.get("")
 def get_course_folders(
     course_id: str,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = text("""
+    course_query = text("""
         SELECT
-            f.id,
-            f.name,
-            f.created_at,
-            f.updated_at
-        FROM folders f
-        WHERE f.course_id = :course_id
-          AND f.student_id = :student_id
-        ORDER BY f.created_at ASC;
+            sc.id
+        FROM student_courses sc
+        WHERE sc.course_id = :course_id
+          AND sc.student_id = :student_id
+        LIMIT 1;
     """)
 
-    result = db.execute(
-        query,
+    course_enrollment = db.execute(
+        course_query,
         {
             "course_id": course_id,
             "student_id": current_user.id,
         },
-    )
+    ).fetchone()
 
-    folders = []
+    if not course_enrollment:
+        raise HTTPException(
+            status_code=404,
+            detail="El estudiante no está inscrito en este curso.",
+        )
 
-    for row in result:
-        folders.append({
-            "id": str(row.id),
-            "name": row.name,
-            "created_at": row.created_at,
-            "updated_at": row.updated_at,
-        })
+    folders_query = text("""
+        SELECT
+            id,
+            name,
+            course_id,
+            created_at,
+            updated_at
+        FROM folders
+        WHERE course_id = :course_id
+          AND student_id = :student_id
+        ORDER BY created_at ASC;
+    """)
+
+    folders = db.execute(
+        folders_query,
+        {
+            "course_id": course_id,
+            "student_id": current_user.id,
+        },
+    ).fetchall()
 
     return {
-        "course_id": course_id,
-        "folders": folders,
+        "folders": [
+            {
+                "id": str(folder.id),
+                "name": folder.name,
+                "course_id": str(folder.course_id),
+                "created_at": folder.created_at,
+                "updated_at": folder.updated_at,
+            }
+            for folder in folders
+        ]
     }
 
 
-@router.post("/{course_id}/folders")
-def create_course_folder(
+@router.post("")
+def create_folder(
     course_id: str,
-    payload: CreateFolderRequest,
+    payload: FolderCreateRequest,
     current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -74,43 +97,49 @@ def create_course_folder(
         )
 
     course_query = text("""
-        SELECT id
-        FROM student_courses
-        WHERE student_id = :student_id
-          AND course_id = :course_id
+        SELECT
+            sc.id
+        FROM student_courses sc
+        WHERE sc.course_id = :course_id
+          AND sc.student_id = :student_id
         LIMIT 1;
     """)
 
-    course = db.execute(
+    course_enrollment = db.execute(
         course_query,
         {
-            "student_id": current_user.id,
             "course_id": course_id,
+            "student_id": current_user.id,
         },
     ).fetchone()
 
-    if not course:
+    if not course_enrollment:
         raise HTTPException(
             status_code=404,
             detail="El estudiante no está inscrito en este curso.",
         )
 
-    insert_query = text("""
-        INSERT INTO folders (
-            student_id,
-            course_id,
-            name
-        )
-        VALUES (
-            :student_id,
-            :course_id,
-            :name
-        )
-        RETURNING id, name, created_at, updated_at;
-    """)
-
     try:
-        new_folder = db.execute(
+        insert_query = text("""
+            INSERT INTO folders (
+                student_id,
+                course_id,
+                name
+            )
+            VALUES (
+                :student_id,
+                :course_id,
+                :name
+            )
+            RETURNING
+                id,
+                name,
+                course_id,
+                created_at,
+                updated_at;
+        """)
+
+        folder = db.execute(
             insert_query,
             {
                 "student_id": current_user.id,
@@ -121,16 +150,105 @@ def create_course_folder(
 
         db.commit()
 
-    except Exception:
+        return {
+            "id": str(folder.id),
+            "name": folder.name,
+            "course_id": str(folder.course_id),
+            "created_at": folder.created_at,
+            "updated_at": folder.updated_at,
+        }
+
+    except Exception as error:
         db.rollback()
+
+        error_text = str(error)
+
+        if "uq_folder_student_course_name" in error_text:
+            raise HTTPException(
+                status_code=409,
+                detail="Ya existe una carpeta con ese nombre en este curso.",
+            )
+
         raise HTTPException(
-            status_code=400,
-            detail="No se pudo crear la carpeta. Puede que ya exista una carpeta con ese nombre.",
+            status_code=500,
+            detail=f"No se pudo crear la carpeta: {error_text}",
         )
 
-    return {
-        "id": str(new_folder.id),
-        "name": new_folder.name,
-        "created_at": new_folder.created_at,
-        "updated_at": new_folder.updated_at,
-    }
+
+@router.delete("/{folder_id}")
+def delete_folder(
+    course_id: str,
+    folder_id: str,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    folder_query = text("""
+        SELECT
+            id,
+            name,
+            course_id,
+            student_id
+        FROM folders
+        WHERE id = :folder_id
+          AND course_id = :course_id
+          AND student_id = :student_id
+        LIMIT 1;
+    """)
+
+    folder = db.execute(
+        folder_query,
+        {
+            "folder_id": folder_id,
+            "course_id": course_id,
+            "student_id": current_user.id,
+        },
+    ).fetchone()
+
+    if not folder:
+        raise HTTPException(
+            status_code=404,
+            detail="Carpeta no encontrada.",
+        )
+
+    try:
+        db.execute(
+            text("""
+                DELETE FROM conversations
+                WHERE folder_id = :folder_id
+                  AND course_id = :course_id
+                  AND student_id = :student_id;
+            """),
+            {
+                "folder_id": folder_id,
+                "course_id": course_id,
+                "student_id": current_user.id,
+            },
+        )
+
+        db.execute(
+            text("""
+                DELETE FROM folders
+                WHERE id = :folder_id
+                  AND course_id = :course_id
+                  AND student_id = :student_id;
+            """),
+            {
+                "folder_id": folder_id,
+                "course_id": course_id,
+                "student_id": current_user.id,
+            },
+        )
+
+        db.commit()
+
+        return {
+            "message": "Carpeta eliminada correctamente.",
+            "folder_id": folder_id,
+        }
+
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"No se pudo eliminar la carpeta: {str(error)}",
+        )
