@@ -49,11 +49,11 @@ export function CourseSelectionPage({
                 </p>
 
                 <h2 className="mt-3 text-2xl font-black text-slate-900">
-                  Mis asignaturas
+                  Bienvenido
                 </h2>
 
                 <p className="mt-3 text-sm leading-6 text-slate-600">
-                  Selecciona un curso para iniciar el acompañamiento con UTutor.
+                  Ututor es tu ayudante virtual encargado de responder preguntas relacionadas con la asignatura.
                 </p>
               </div>
 
@@ -85,7 +85,7 @@ export function CourseSelectionPage({
             <section className="flex min-w-0 flex-1 flex-col">
               <div className="shrink-0 border-b border-teal-200 bg-white/70 px-8 py-5 backdrop-blur">
                 <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
-                  Selección de asignatura
+                  Asignaturas disponibles
                 </p>
 
                 <h1 className="mt-1 text-2xl font-bold text-teal-950">

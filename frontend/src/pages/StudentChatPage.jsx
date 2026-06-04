@@ -358,7 +358,7 @@ const handleDeleteFolder = async (folderId) => {
                     </p>
 
                     <h1 className="mt-1 text-2xl font-bold text-teal-950">
-                      {selectedCourse?.name ?? "Asignatura"}
+                       Chat académico
                     </h1>
 
                     <p className="mt-1 text-sm text-slate-600">

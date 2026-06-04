@@ -61,7 +61,7 @@ export function UserMenu({ user, onLogout }) {
             }}
             className="mt-3 w-full rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-left text-sm font-black text-red-600 transition hover:bg-red-100"
           >
-            Cerrar sesión por completo
+            Cerrar sesión
           </button>
         </div>
       )}

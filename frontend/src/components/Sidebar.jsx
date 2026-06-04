@@ -143,7 +143,7 @@ export function Sidebar({
                 UTutor
               </p>
               <h2 className="mt-1 line-clamp-2 text-lg font-black text-slate-900">
-                {course?.name ?? "Asignatura"}
+                Panel de consultas
               </h2>
             </div>
           </div>
