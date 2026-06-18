@@ -12,27 +12,27 @@ export function CourseSelectionPage({
   const courseList = Array.isArray(courses) ? courses : [];
 
   return (
-    <main className="h-screen w-screen overflow-hidden bg-gradient-to-br from-cyan-100 via-teal-50 to-emerald-100 p-3">
-      <div className="relative h-full w-full overflow-hidden rounded-[28px] border border-teal-300 bg-white/75 shadow-2xl shadow-teal-200/60 backdrop-blur-md">
+    <main className="h-screen w-screen overflow-hidden bg-gradient-to-br from-cyan-100 via-teal-50 to-emerald-100 p-1.5 sm:p-3">
+      <div className="relative h-full w-full overflow-hidden rounded-2xl border border-teal-300 bg-white/75 shadow-2xl shadow-teal-200/60 backdrop-blur-md sm:rounded-[28px]">
         <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/40 blur-3xl" />
         <div className="absolute right-[-90px] top-20 h-80 w-80 rounded-full bg-emerald-300/40 blur-3xl" />
         <div className="absolute bottom-[-120px] left-1/2 h-80 w-80 rounded-full bg-teal-300/30 blur-3xl" />
 
         <div className="relative z-10 flex h-full min-h-0 flex-col">
-          <header className="flex h-20 shrink-0 items-center border-b border-slate-200 bg-white shadow-sm">
-            <div className="flex h-full w-[320px] shrink-0 items-center border-r border-slate-200 bg-gradient-to-r from-teal-100 to-cyan-50 px-8">
+          <header className="flex h-16 shrink-0 items-center border-b border-slate-200 bg-white px-3 shadow-sm sm:h-20 sm:px-0">
+            <div className="hidden h-full w-[320px] shrink-0 items-center border-r border-slate-200 bg-gradient-to-r from-teal-100 to-cyan-50 px-8 lg:flex">
               <h1 className="text-2xl font-black italic leading-none text-slate-900">
                 UTutor
               </h1>
             </div>
 
-            <div className="flex h-full min-w-0 flex-1 items-center justify-between px-8">
+            <div className="flex h-full min-w-0 flex-1 items-center justify-between gap-3 px-2 sm:px-8">
               <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-400">
+                <p className="hidden text-xs font-bold uppercase tracking-[0.22em] text-slate-400 sm:block">
                   Tutor académico
                 </p>
 
-                <h2 className="mt-1 truncate text-lg font-black text-slate-900">
+                <h2 className="mt-1 truncate text-base font-black text-slate-900 sm:text-lg">
                   Asignaturas
                 </h2>
               </div>
@@ -42,7 +42,7 @@ export function CourseSelectionPage({
           </header>
 
           <div className="flex min-h-0 flex-1">
-            <aside className="flex h-full w-[320px] shrink-0 flex-col border-r border-slate-200 bg-white/90 shadow-sm backdrop-blur-xl">
+            <aside className="hidden h-full w-[320px] shrink-0 flex-col border-r border-slate-200 bg-white/90 shadow-sm backdrop-blur-xl lg:flex">
               <div className="border-b border-slate-100 bg-gradient-to-br from-teal-100 to-cyan-50 px-8 py-8">
                 <p className="text-xs font-bold uppercase tracking-[0.22em] text-teal-700">
                   Panel estudiante
@@ -83,12 +83,12 @@ export function CourseSelectionPage({
             </aside>
 
             <section className="flex min-w-0 flex-1 flex-col">
-              <div className="shrink-0 border-b border-teal-200 bg-white/70 px-8 py-5 backdrop-blur">
+              <div className="shrink-0 border-b border-teal-200 bg-white/70 px-4 py-4 backdrop-blur sm:px-8 sm:py-5">
                 <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
                   Asignaturas disponibles
                 </p>
 
-                <h1 className="mt-1 text-2xl font-bold text-teal-950">
+                <h1 className="mt-1 text-xl font-bold text-teal-950 sm:text-2xl">
                   Elige una asignatura
                 </h1>
 
@@ -98,7 +98,7 @@ export function CourseSelectionPage({
                 </p>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto p-8">
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-8">
                 <div className="mx-auto max-w-5xl">
                   {coursesError && (
                     <div className="mb-5 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm font-bold text-red-600">
@@ -123,13 +123,13 @@ export function CourseSelectionPage({
                       </p>
                     </div>
                   ) : (
-                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-4 sm:gap-5 md:grid-cols-2 xl:grid-cols-3">
                       {courseList.map((course) => (
                         <button
                           key={course.id}
                           type="button"
                           onClick={() => onSelectCourse?.(course)}
-                          className="group rounded-[30px] border border-teal-100 bg-white/95 p-6 text-left shadow-lg shadow-teal-100/50 transition hover:-translate-y-1 hover:border-teal-300 hover:shadow-xl hover:shadow-teal-200/60"
+                          className="group rounded-[24px] border border-teal-100 bg-white/95 p-5 text-left shadow-lg shadow-teal-100/50 transition hover:-translate-y-1 hover:border-teal-300 hover:shadow-xl hover:shadow-teal-200/60 sm:rounded-[30px] sm:p-6"
                         >
                           <div className="mb-5 inline-flex rounded-full bg-teal-100 px-3 py-1.5">
                             <span className="text-xs font-black uppercase tracking-[0.18em] text-teal-700">

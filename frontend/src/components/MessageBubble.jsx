@@ -115,7 +115,7 @@ export function MessageBubble({ message }) {
   return (
     <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[72%] rounded-[26px] border px-6 py-5 shadow-sm ${
+        className={`max-w-[90%] rounded-2xl border px-4 py-4 shadow-sm sm:max-w-[80%] sm:rounded-[26px] sm:px-6 sm:py-5 lg:max-w-[72%] ${
           isUser
             ? "border-teal-300 bg-gradient-to-br from-cyan-50 to-teal-50 text-slate-900"
             : "border-slate-200 bg-white text-slate-900"

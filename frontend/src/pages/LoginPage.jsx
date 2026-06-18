@@ -21,13 +21,13 @@ export function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-cyan-100 via-teal-50 to-emerald-100 p-4">
-      <section className="relative min-h-[calc(100vh-32px)] overflow-hidden rounded-[28px] border border-teal-300 bg-white/70 shadow-2xl shadow-teal-200/60 backdrop-blur-md">
-        <div className="absolute left-8 top-8 z-20 flex items-center gap-3 rounded-2xl border border-teal-200 bg-white/80 px-4 py-3 shadow-lg shadow-teal-100/60 backdrop-blur">
+    <main className="min-h-screen bg-gradient-to-br from-cyan-100 via-teal-50 to-emerald-100 p-2 sm:p-4">
+      <section className="relative min-h-[calc(100vh-16px)] overflow-hidden rounded-2xl border border-teal-300 bg-white/70 shadow-2xl shadow-teal-200/60 backdrop-blur-md sm:min-h-[calc(100vh-32px)] sm:rounded-[28px]">
+        <div className="absolute left-3 top-3 z-20 flex items-center gap-2 rounded-2xl border border-teal-200 bg-white/80 px-3 py-2 shadow-lg shadow-teal-100/60 backdrop-blur sm:left-8 sm:top-8 sm:gap-3 sm:px-4 sm:py-3">
           <img
             src={utemLogo}
             alt="Logo UTEM"
-            className="h-14 w-auto object-contain"
+            className="h-10 w-auto object-contain sm:h-14"
           />
 
           <div className="hidden sm:block">
@@ -42,13 +42,13 @@ export function LoginPage() {
         <div className="absolute right-[-90px] top-20 h-80 w-80 rounded-full bg-emerald-300/40 blur-3xl" />
         <div className="absolute bottom-[-120px] left-1/2 h-80 w-80 rounded-full bg-teal-300/30 blur-3xl" />
 
-        <div className="relative z-10 grid min-h-[calc(100vh-32px)] grid-cols-1 items-center gap-10 px-8 py-24 lg:grid-cols-[1fr_420px] lg:px-24">
+        <div className="relative z-10 grid min-h-[calc(100vh-16px)] grid-cols-1 items-center gap-8 px-4 py-20 sm:min-h-[calc(100vh-32px)] sm:gap-10 sm:px-8 sm:py-24 lg:grid-cols-[1fr_420px] lg:px-24">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
             <div className="mb-6 rounded-full border border-teal-300 bg-white/70 px-5 py-2 text-sm font-medium text-teal-700 shadow-sm">
               Ayudante académico inteligente
             </div>
 
-            <h1 className="font-serif text-[76px] font-bold italic leading-none tracking-tight text-teal-950 drop-shadow-sm md:text-[96px]">
+            <h1 className="font-serif text-[52px] font-bold italic leading-none tracking-tight text-teal-950 drop-shadow-sm sm:text-[76px] md:text-[96px]">
               UTutor
             </h1>
 
@@ -86,7 +86,7 @@ export function LoginPage() {
 
           <form
             onSubmit={handleSubmit}
-            className="mx-auto w-full max-w-[380px] rounded-[34px] border border-teal-300 bg-white/85 p-8 shadow-2xl shadow-teal-300/30 backdrop-blur"
+            className="mx-auto w-full max-w-[380px] rounded-[28px] border border-teal-300 bg-white/85 p-6 shadow-2xl shadow-teal-300/30 backdrop-blur sm:rounded-[34px] sm:p-8"
           >
             <div className="mb-7 text-center">
               <h2 className="text-2xl font-bold text-teal-950">

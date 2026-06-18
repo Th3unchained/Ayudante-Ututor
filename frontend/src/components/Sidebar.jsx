@@ -14,6 +14,8 @@ export function Sidebar({
   onDeleteFolder,
   onNewConversation,
   onDeleteConversation,
+  isOpen = false,
+  onClose,
 }) {
   const [newFolderName, setNewFolderName] = useState("");
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
@@ -135,7 +137,18 @@ export function Sidebar({
 
   return (
     <>
-      <aside className="flex h-full w-[320px] shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white/90 shadow-sm backdrop-blur-xl">
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-900/40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex h-full w-[85%] max-w-[300px] shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white shadow-2xl transition-transform duration-300 ease-out lg:static lg:z-auto lg:w-[320px] lg:max-w-none lg:translate-x-0 lg:bg-white/90 lg:shadow-sm lg:backdrop-blur-xl ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <div className="shrink-0 border-b border-slate-100 px-5 py-5">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -146,12 +159,24 @@ export function Sidebar({
                 Panel de consultas
               </h2>
             </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg font-black text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 lg:hidden"
+              title="Cerrar menú"
+            >
+              ×
+            </button>
           </div>
 
           {onNewConversation && (
             <button
               type="button"
-              onClick={onNewConversation}
+              onClick={() => {
+                onNewConversation();
+                onClose?.();
+              }}
               className="mt-3 w-full rounded-2xl bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 px-4 py-3 text-sm font-black text-white shadow-lg shadow-teal-500/25 transition hover:scale-[1.01]"
             >
               Nueva consulta
@@ -228,7 +253,10 @@ export function Sidebar({
               <div className="space-y-3">
                 <button
                   type="button"
-                  onClick={() => onSelectFolder?.(null)}
+                  onClick={() => {
+                    onSelectFolder?.(null);
+                    onClose?.();
+                  }}
                   className={`w-full rounded-2xl px-4 py-3.5 text-left text-sm font-bold transition ${
                     activeFolderId === null
                       ? "bg-gradient-to-r from-cyan-500 to-emerald-500 text-white shadow-lg shadow-teal-500/20"
@@ -249,7 +277,10 @@ export function Sidebar({
                   >
                     <button
                       type="button"
-                      onClick={() => onSelectFolder?.(folder.id)}
+                      onClick={() => {
+                        onSelectFolder?.(folder.id);
+                        onClose?.();
+                      }}
                       className="min-w-0 flex-1 px-4 py-3.5 text-left text-sm font-bold"
                     >
                       <span className="line-clamp-1">{folder.name}</span>
@@ -317,9 +348,10 @@ export function Sidebar({
                       >
                         <button
                           type="button"
-                          onClick={() =>
-                            onSelectConversation?.(conversation.id)
-                          }
+                          onClick={() => {
+                            onSelectConversation?.(conversation.id);
+                            onClose?.();
+                          }}
                           className="min-w-0 flex-1 text-left"
                         >
                           <p

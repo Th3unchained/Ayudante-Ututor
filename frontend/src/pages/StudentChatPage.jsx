@@ -31,6 +31,7 @@ export function StudentChatPage({ selectedCourse, onLogout, onBackToCourses }) {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const courseId = selectedCourse?.id;
   const { user } = useAuth();
@@ -320,8 +321,8 @@ const handleDeleteFolder = async (folderId) => {
   };
 
   return (
-    <main className="h-screen w-screen overflow-hidden bg-gradient-to-br from-cyan-100 via-teal-50 to-emerald-100 p-3">
-      <div className="relative h-full w-full overflow-visible rounded-[28px] border border-teal-300 bg-white/75 shadow-2xl shadow-teal-200/60 backdrop-blur-md">
+    <main className="h-screen w-screen overflow-hidden bg-gradient-to-br from-cyan-100 via-teal-50 to-emerald-100 p-1.5 sm:p-3">
+      <div className="relative h-full w-full overflow-visible rounded-2xl border border-teal-300 bg-white/75 shadow-2xl shadow-teal-200/60 backdrop-blur-md sm:rounded-[28px]">
         <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-cyan-300/40 blur-3xl" />
         <div className="absolute right-[-90px] top-20 h-80 w-80 rounded-full bg-emerald-300/40 blur-3xl" />
         <div className="absolute bottom-[-120px] left-1/2 h-80 w-80 rounded-full bg-teal-300/30 blur-3xl" />
@@ -332,6 +333,7 @@ const handleDeleteFolder = async (folderId) => {
             user={user}
             onLogout={onLogout}
             onBackToCourses={onBackToCourses}
+            onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
           />
 
           <div className="flex min-h-0 flex-1">
@@ -347,17 +349,19 @@ const handleDeleteFolder = async (folderId) => {
               onSelectConversation={handleSelectConversation}
               onDeleteConversation={handleDeleteConversation}
               onNewConversation={handleNewConversation}
+              isOpen={isSidebarOpen}
+              onClose={() => setIsSidebarOpen(false)}
             />
 
             <section className="flex min-w-0 flex-1 flex-col">
-              <div className="shrink-0 border-b border-teal-200 bg-white/70 px-8 py-5 backdrop-blur">
+              <div className="shrink-0 border-b border-teal-200 bg-white/70 px-4 py-4 backdrop-blur sm:px-8 sm:py-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
                       Tutor IA activo
                     </p>
 
-                    <h1 className="mt-1 text-2xl font-bold text-teal-950">
+                    <h1 className="mt-1 text-xl font-bold text-teal-950 sm:text-2xl">
                        Chat académico
                     </h1>
 
@@ -398,16 +402,16 @@ const handleDeleteFolder = async (folderId) => {
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 p-6">
-                <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-teal-200 bg-white/90 shadow-xl shadow-teal-100/60 backdrop-blur">
-                  <div className="shrink-0 border-b border-teal-100 bg-gradient-to-r from-cyan-50 to-emerald-50 px-7 py-5">
+              <div className="min-h-0 flex-1 p-2 sm:p-6">
+                <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-teal-200 bg-white/90 shadow-xl shadow-teal-100/60 backdrop-blur sm:rounded-[28px]">
+                  <div className="shrink-0 border-b border-teal-100 bg-gradient-to-r from-cyan-50 to-emerald-50 px-4 py-4 sm:px-7 sm:py-5">
                     <div className="flex items-center justify-between gap-4">
                       <div>
                         <p className="text-sm font-bold text-teal-950">
                           Conversación
                         </p>
                         <p className="mt-1 text-xs text-slate-500">
-                          Los mensajes se guardan en PostgreSQL y usan contexto
+                          Los mensajes se guardan y usan contexto
                           del material del curso.
                         </p>
                       </div>
@@ -418,8 +422,8 @@ const handleDeleteFolder = async (folderId) => {
                     </div>
                   </div>
 
-                  <div className="min-h-0 flex-1 overflow-y-auto scroll-smooth px-8 py-8">
-                    <div className="mx-auto flex max-w-5xl flex-col gap-7 pb-8">
+                  <div className="min-h-0 flex-1 overflow-y-auto scroll-smooth px-3 py-4 sm:px-8 sm:py-8">
+                    <div className="mx-auto flex max-w-5xl flex-col gap-5 pb-4 sm:gap-7 sm:pb-8">
                       {messages.map((message) => (
                         <MessageBubble key={message.id} message={message} />
                       ))}
