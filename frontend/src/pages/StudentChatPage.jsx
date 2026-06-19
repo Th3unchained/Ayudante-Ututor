@@ -153,41 +153,22 @@ const handleDeleteFolder = async (folderId) => {
     }
   };
 
-  const handleNewConversation = async () => {
-    try {
-      setErrorMessage("");
-      setSaveMessage("");
+  const handleNewConversation = () => {
+    setErrorMessage("");
+    setSaveMessage("");
 
-      const newConversation = await conversationService.createConversation({
-        courseId,
-        title: `Nueva consulta ${conversations.length + 1}`,
-        folderId: activeFolderId,
-        isSaved: true,
-      });
+    setActiveConversationId(null);
 
-      setConversations((currentConversations) => {
-        const withoutDuplicate = currentConversations.filter(
-          (conversation) => conversation.id !== newConversation.id
-        );
+    setMessages([
+      {
+        id: "new-conversation-message",
+        role: "assistant",
+        text: "Nueva consulta creada. Escribe tu pregunta para comenzar.",
+        sources: [],
+      },
+    ]);
 
-        return [newConversation, ...withoutDuplicate];
-      });
-
-      setActiveConversationId(newConversation.id);
-
-      setMessages([
-        {
-          id: "new-conversation-message",
-          role: "assistant",
-          text: "Nueva consulta creada. Escribe tu pregunta para comenzar.",
-          sources: [],
-        },
-      ]);
-
-      setInput("");
-    } catch (error) {
-      setErrorMessage(error.message);
-    }
+    setInput("");
   };
 
   const handleOpenSaveModal = () => {
@@ -268,12 +249,28 @@ const handleDeleteFolder = async (folderId) => {
       return;
     }
 
+    const optimisticUserMessage = {
+      id: `pending-user-${Date.now()}`,
+      role: "user",
+      text: question,
+      sources: [],
+    };
+
     try {
       setIsSending(true);
       setErrorMessage("");
       setSaveMessage("");
 
       setInput("");
+
+      setMessages((currentMessages) => [
+        ...currentMessages.filter(
+          (message) =>
+            message.id !== "initial-message" &&
+            message.id !== "new-conversation-message"
+        ),
+        optimisticUserMessage,
+      ]);
 
       const response = await chatService.askTutor({
         courseId,
@@ -306,15 +303,20 @@ const handleDeleteFolder = async (folderId) => {
 
       setMessages((currentMessages) => [
         ...currentMessages.filter(
-          (message) =>
-            message.id !== "initial-message" &&
-            message.id !== "new-conversation-message"
+          (message) => message.id !== optimisticUserMessage.id
         ),
         response.userMessage,
         response.assistantMessage,
       ]);
     } catch (error) {
       setErrorMessage(error.message);
+      setInput(question);
+
+      setMessages((currentMessages) =>
+        currentMessages.filter(
+          (message) => message.id !== optimisticUserMessage.id
+        )
+      );
     } finally {
       setIsSending(false);
     }
@@ -411,7 +413,7 @@ const handleDeleteFolder = async (folderId) => {
                           Conversación
                         </p>
                         <p className="mt-1 text-xs text-slate-500">
-                          Los mensajes se guardan y usan contexto
+                          Los mensajes se guardan en PostgreSQL y usan contexto
                           del material del curso.
                         </p>
                       </div>
