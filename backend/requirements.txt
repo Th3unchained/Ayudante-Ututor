@@ -6,3 +6,7 @@ python-dotenv
 PyJWT
 google-genai
 email-validator
+langchain-text-splitters
+pypdf
+python-pptx
+redis

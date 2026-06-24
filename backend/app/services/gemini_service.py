@@ -18,6 +18,41 @@ if not GEMINI_API_KEY:
 
 client = genai.Client(api_key=GEMINI_API_KEY)
 
+
+def _build_safety_settings():
+    """Construye los Safety Settings nativos de Gemini (primera capa de
+    guardrails). Se aplican de forma defensiva: si la versión instalada del
+    SDK no reconoce estos parámetros, se ignoran y el sistema sigue
+    funcionando igual con las capas de guardrail adicionales (reglas + juez LLM).
+    """
+
+    try:
+        threshold = types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE
+
+        return [
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold=threshold,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold=threshold,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold=threshold,
+            ),
+            types.SafetySetting(
+                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold=threshold,
+            ),
+        ]
+    except Exception:
+        return None
+
+
+SAFETY_SETTINGS = _build_safety_settings()
+
 SYSTEM_INSTRUCTION = """
 Eres UTutor, un tutor académico para estudiantes universitarios.
 
@@ -31,8 +66,8 @@ Reglas generales:
 4. Usa el contexto entregado si es útil.
 5. No inventes fuentes, documentos ni contenidos del curso.
 6. Si el contexto no contiene información suficiente, dilo de forma transparente.
-7. Si la pregunta está fuera de la asignatura, acláralo con respeto y redirige al estudiante hacia temas del curso.
-8. Si el estudiante pide resolver un ejercicio, primero orienta el razonamiento y luego entrega la respuesta.
+7. Si la pregunta está fuera de la asignatura, acláralo con respeto.
+8. Si el estudiante pide resolver un ejercicio, primero orienta el razonamiento pero no entregues la respuesta.
 9. No dejes frases cortadas ni listas incompletas.
 10. Evita respuestas excesivamente largas.
 11. No uses Markdown complejo, tablas ni títulos con símbolos innecesarios.
@@ -48,13 +83,10 @@ Formato recomendado de respuesta:
 - Si la pregunta es un ejercicio:
   Análisis del problema
   Paso a paso
-  Resultado
   Cierre
 
 - Si la pregunta está fuera del contexto o fuera de la asignatura:
   Respuesta breve
-  Relación con la asignatura
-  Orientación
   Cierre
 
 Estilo visual:
@@ -115,7 +147,7 @@ Instrucciones para esta respuesta:
 - Responde como tutor académico.
 - Usa solamente el contexto si este permite responder.
 - Si el contexto no alcanza, dilo claramente.
-- Si la pregunta no corresponde a la asignatura, explícalo brevemente y redirige hacia contenidos del curso.
+- Si la pregunta no corresponde a la asignatura, responde de forma breve y cierra.
 - Entrega una respuesta ordenada y estética.
 - Usa subtítulos simples.
 - Usa listas breves si ayudan.
@@ -124,19 +156,41 @@ Instrucciones para esta respuesta:
 - No termines con frases cortadas.
 """
 
-    response = client.models.generate_content(
-        model=GEMINI_MODEL,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_INSTRUCTION,
-            temperature=GEMINI_TEMPERATURE,
-            top_p=GEMINI_TOP_P,
-            max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS,
-            response_mime_type="text/plain",
-        ),
+    generation_config_kwargs = dict(
+        system_instruction=SYSTEM_INSTRUCTION,
+        temperature=GEMINI_TEMPERATURE,
+        top_p=GEMINI_TOP_P,
+        max_output_tokens=GEMINI_MAX_OUTPUT_TOKENS,
+        response_mime_type="text/plain",
     )
 
-    answer = response.text
+    if SAFETY_SETTINGS:
+        generation_config_kwargs["safety_settings"] = SAFETY_SETTINGS
+
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(**generation_config_kwargs),
+        )
+    except TypeError:
+        # Compatibilidad con versiones del SDK que no aceptan safety_settings
+        # en este punto: se reintenta sin esa capa nativa, manteniendo las
+        # demás capas de guardrail (reglas + juez LLM) intactas.
+        generation_config_kwargs.pop("safety_settings", None)
+
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(**generation_config_kwargs),
+        )
+
+    try:
+        answer = response.text
+    except Exception:
+        # La respuesta fue bloqueada por los Safety Settings nativos de
+        # Gemini (primera capa de guardrail) u otro motivo similar.
+        answer = None
 
     if not answer:
         return "No pude generar una respuesta en este momento. Intenta reformular tu consulta."
