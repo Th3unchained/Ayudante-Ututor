@@ -98,6 +98,36 @@ def get_conversation_messages(
     messages = []
 
     for row in result:
+        sources_result = db.execute(
+            text("""
+                SELECT
+                    document_id,
+                    chunk_id,
+                    document_name,
+                    page_number,
+                    section_title,
+                    similarity_score
+                FROM message_sources
+                WHERE message_id = :message_id
+                ORDER BY similarity_score DESC NULLS LAST;
+            """),
+            {"message_id": row.id},
+        )
+
+        sources = [
+            {
+                "document_id": str(source.document_id) if source.document_id else None,
+                "chunk_id": str(source.chunk_id) if source.chunk_id else None,
+                "document_name": source.document_name,
+                "page_number": source.page_number,
+                "section_title": source.section_title,
+                "similarity_score": float(source.similarity_score)
+                if source.similarity_score is not None
+                else None,
+            }
+            for source in sources_result
+        ]
+
         messages.append({
             "id": str(row.id),
             "conversation_id": conversation_id,
@@ -107,6 +137,7 @@ def get_conversation_messages(
             "tokens_input": row.tokens_input,
             "tokens_output": row.tokens_output,
             "created_at": row.created_at,
+            "sources": sources,
         })
 
     return {
@@ -146,7 +177,8 @@ def create_conversation_message(
             content,
             model_name,
             tokens_input,
-            tokens_output
+            tokens_output,
+            created_at
         )
         VALUES (
             :conversation_id,
@@ -154,7 +186,8 @@ def create_conversation_message(
             :content,
             :model_name,
             :tokens_input,
-            :tokens_output
+            :tokens_output,
+            clock_timestamp()
         )
         RETURNING
             id,

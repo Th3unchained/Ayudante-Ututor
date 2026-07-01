@@ -9,6 +9,8 @@ from app.database import get_db
 from app.security import get_current_user
 from app.services.gemini_service import generate_tutor_answer
 from app.services.embedding_service import generate_embedding
+from app.services.cache_service import get_cached_answer, store_answer_in_cache
+from app.services.guardrails_service import validate_answer, FALLBACK_ANSWER
 
 
 router = APIRouter(
@@ -185,7 +187,8 @@ def create_message(
             content,
             model_name,
             tokens_input,
-            tokens_output
+            tokens_output,
+            created_at
         )
         VALUES (
             :conversation_id,
@@ -193,7 +196,8 @@ def create_message(
             :content,
             :model_name,
             0,
-            0
+            0,
+            clock_timestamp()
         )
         RETURNING
             id,
@@ -314,6 +318,36 @@ def save_message_sources(message_id: str, context_chunks: list[dict], db: Sessio
         )
 
 
+def save_guardrail_check(message_id: str, guardrail_result: dict, db: Session):
+    query = text("""
+        INSERT INTO guardrail_checks (
+            message_id,
+            passed,
+            risk_level,
+            reason,
+            checked_by
+        )
+        VALUES (
+            :message_id,
+            :passed,
+            :risk_level,
+            :reason,
+            :checked_by
+        );
+    """)
+
+    db.execute(
+        query,
+        {
+            "message_id": message_id,
+            "passed": guardrail_result["passed"],
+            "risk_level": guardrail_result["risk_level"],
+            "reason": guardrail_result["reason"],
+            "checked_by": guardrail_result["checked_by"],
+        },
+    )
+
+
 @router.post("/ask")
 def ask_tutor(
     payload: ChatAskRequest,
@@ -327,6 +361,10 @@ def ask_tutor(
             status_code=400,
             detail="La pregunta es obligatoria.",
         )
+
+    context_chunks = []
+    guardrail_result = None
+    served_from_cache = False
 
     try:
         course = get_student_course(
@@ -358,23 +396,59 @@ def ask_tutor(
             db=db,
         )
 
-        context_chunks = get_context_chunks(
+        # --- Capa de caché: revisa si ya existe una respuesta válida para
+        # una pregunta igual o muy similar antes de llamar a Gemini. ---
+        cache_lookup = get_cached_answer(
             course_id=payload.course_id,
             question=question,
             db=db,
         )
+        cache_hit = cache_lookup["hit"]
 
-        answer = generate_tutor_answer(
-            question=question,
-            course_name=course.name,
-            context_chunks=context_chunks,
-        )
+        if cache_hit:
+            served_from_cache = True
+            final_answer = cache_hit["answer"]
+            context_chunks = cache_hit.get("sources", [])
+            model_name = f"cache:{cache_hit['cache_layer']}"
+
+            guardrail_result = {
+                "passed": True,
+                "risk_level": "bajo",
+                "reason": "Respuesta servida desde caché; ya fue validada previamente.",
+                "checked_by": "cache",
+            }
+        else:
+            context_chunks = get_context_chunks(
+                course_id=payload.course_id,
+                question=question,
+                db=db,
+            )
+
+            raw_answer = generate_tutor_answer(
+                question=question,
+                course_name=course.name,
+                context_chunks=context_chunks,
+            )
+
+            guardrail_result = validate_answer(
+                question=question,
+                answer=raw_answer,
+                course_name=course.name,
+            )
+
+            if guardrail_result["passed"]:
+                final_answer = raw_answer
+            else:
+                final_answer = FALLBACK_ANSWER
+                context_chunks = []
+
+            model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
         assistant_message = create_message(
             conversation_id=str(conversation.id),
             role="assistant",
-            content=answer,
-            model_name=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+            content=final_answer,
+            model_name=model_name,
             db=db,
         )
 
@@ -383,6 +457,33 @@ def ask_tutor(
             context_chunks=context_chunks,
             db=db,
         )
+
+        save_guardrail_check(
+            message_id=str(assistant_message.id),
+            guardrail_result=guardrail_result,
+            db=db,
+        )
+
+        if not served_from_cache and guardrail_result["passed"]:
+            sources_to_cache = [
+                {
+                    "document_id": c["document_id"],
+                    "chunk_id": c["chunk_id"],
+                    "document_name": c["document_name"],
+                    "page_number": c["page_number"],
+                    "section_title": c["section_title"],
+                    "similarity_score": c.get("similarity_score"),
+                }
+                for c in context_chunks
+            ]
+            store_answer_in_cache(
+                course_id=payload.course_id,
+                question=question,
+                answer=final_answer,
+                db=db,
+                sources=sources_to_cache,
+                question_embedding=cache_lookup.get("question_embedding"),
+            )
 
         update_query = text("""
             UPDATE conversations
@@ -445,5 +546,10 @@ def ask_tutor(
             "model_name": assistant_message.model_name,
             "created_at": assistant_message.created_at,
             "sources": sources,
+            "from_cache": served_from_cache,
+            "guardrail": {
+                "passed": guardrail_result["passed"],
+                "risk_level": guardrail_result["risk_level"],
+            },
         },
     }

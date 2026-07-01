@@ -4,6 +4,7 @@ import { Sidebar } from "../components/Sidebar";
 import { ChatInput } from "../components/ChatInput";
 import { MessageBubble } from "../components/MessageBubble";
 import { SaveConversationModal } from "../components/SaveConversationModal";
+import { TutorTypingIndicator } from "../components/TutorTypingIndicator";
 import { folderService } from "../services/folderService";
 import { conversationService } from "../services/conversationService";
 import { messageService } from "../services/messageService";
@@ -432,9 +433,7 @@ const handleDeleteFolder = async (folderId) => {
 
                       {isSending && (
                         <div className="flex justify-start">
-                          <div className="rounded-2xl border border-teal-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm">
-                            Generando respuesta del tutor...
-                          </div>
+                          <TutorTypingIndicator />
                         </div>
                       )}
                     </div>

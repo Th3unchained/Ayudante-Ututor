@@ -19,6 +19,7 @@ para evitar cachear y reutilizar respuestas bloqueadas o de baja calidad.
 """
 
 import hashlib
+import json
 import os
 import re
 import unicodedata
@@ -40,10 +41,14 @@ if REDIS_URL:
 
         _redis_client = redis.from_url(REDIS_URL, decode_responses=True)
         _redis_client.ping()
-    except Exception:
+        print(f"[cache] Conectado a Redis correctamente ({REDIS_URL.split('@')[-1]}).")
+    except Exception as error:
         # Si Redis no está disponible, el sistema sigue funcionando solo
         # con la caché semántica de PostgreSQL (L2).
         _redis_client = None
+        print(f"[cache] No se pudo conectar a Redis, se usará solo PostgreSQL (L2). Detalle: {error}")
+else:
+    print("[cache] REDIS_URL no configurada, se usará solo la caché semántica de PostgreSQL (L2).")
 
 
 def normalize_question(question: str) -> str:
@@ -77,14 +82,23 @@ def get_cached_answer(course_id: str, question: str, db: Session) -> dict:
         cache_key = build_exact_cache_key(course_id, question)
 
         try:
-            cached_answer = _redis_client.get(cache_key)
+            cached_raw = _redis_client.get(cache_key)
         except Exception:
-            cached_answer = None
+            cached_raw = None
 
-        if cached_answer:
+        if cached_raw:
+            try:
+                cached_payload = json.loads(cached_raw)
+            except (TypeError, ValueError):
+                # Compatibilidad con entradas antiguas guardadas como texto plano
+                # (antes de que la caché también guardara las fuentes).
+                cached_payload = {"answer": cached_raw, "sources": []}
+
+            print(f"[cache] HIT en Redis (L1, coincidencia exacta) para curso {course_id}.")
             return {
                 "hit": {
-                    "answer": cached_answer,
+                    "answer": cached_payload.get("answer", ""),
+                    "sources": cached_payload.get("sources", []),
                     "cache_layer": "redis_exact",
                     "similarity_score": 1.0,
                 },
@@ -102,6 +116,7 @@ def get_cached_answer(course_id: str, question: str, db: Session) -> dict:
         SELECT
             id,
             answer,
+            sources_json,
             1 - (question_embedding <=> CAST(:question_embedding AS vector)) AS similarity_score
         FROM qa_cache
         WHERE course_id = :course_id
@@ -118,9 +133,14 @@ def get_cached_answer(course_id: str, question: str, db: Session) -> dict:
     ).fetchone()
 
     if not row or row.similarity_score is None:
+        print(f"[cache] MISS total (sin entradas previas para curso {course_id}). Se llamará a Gemini.")
         return {"hit": None, "question_embedding": question_embedding}
 
     if row.similarity_score < CACHE_SIMILARITY_THRESHOLD:
+        print(
+            f"[cache] MISS en PostgreSQL (L2): mejor similitud {row.similarity_score:.4f} "
+            f"< umbral {CACHE_SIMILARITY_THRESHOLD}. Se llamará a Gemini."
+        )
         return {"hit": None, "question_embedding": question_embedding}
 
     db.execute(
@@ -133,9 +153,14 @@ def get_cached_answer(course_id: str, question: str, db: Session) -> dict:
         {"id": row.id},
     )
 
+    print(
+        f"[cache] HIT semántico en PostgreSQL (L2), similitud={row.similarity_score:.4f}."
+    )
+
     return {
         "hit": {
             "answer": row.answer,
+            "sources": row.sources_json or [],
             "cache_layer": "postgres_semantic",
             "similarity_score": float(row.similarity_score),
         },
@@ -148,15 +173,20 @@ def store_answer_in_cache(
     question: str,
     answer: str,
     db: Session,
+    sources: list[dict] | None = None,
     question_embedding: list[float] | None = None,
 ) -> None:
+    sources = sources or []
+
     if _redis_client:
         cache_key = build_exact_cache_key(course_id, question)
+        payload = json.dumps({"answer": answer, "sources": sources})
 
         try:
-            _redis_client.set(cache_key, answer, ex=CACHE_TTL_SECONDS)
-        except Exception:
-            pass
+            _redis_client.set(cache_key, payload, ex=CACHE_TTL_SECONDS)
+            print(f"[cache] Respuesta guardada en Redis (L1) con TTL de {CACHE_TTL_SECONDS}s.")
+        except Exception as error:
+            print(f"[cache] No se pudo guardar en Redis: {error}")
 
     if question_embedding is None:
         try:
@@ -172,13 +202,15 @@ def store_answer_in_cache(
                 course_id,
                 question,
                 question_embedding,
-                answer
+                answer,
+                sources_json
             )
             VALUES (
                 :course_id,
                 :question,
                 CAST(:question_embedding AS vector),
-                :answer
+                :answer,
+                CAST(:sources_json AS jsonb)
             );
         """),
         {
@@ -186,5 +218,10 @@ def store_answer_in_cache(
             "question": question,
             "question_embedding": question_vector,
             "answer": answer,
+            "sources_json": json.dumps(sources),
         },
     )
+
+    print(f"[cache] Respuesta guardada en PostgreSQL (L2) para curso {course_id}.")
+
+    print(f"[cache] Respuesta guardada en PostgreSQL (L2) para curso {course_id}.")

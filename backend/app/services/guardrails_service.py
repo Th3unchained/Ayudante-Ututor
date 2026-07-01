@@ -29,8 +29,7 @@ from app.services.gemini_service import GEMINI_MODEL, client
 
 GUARDRAILS_ENABLED = os.getenv("GUARDRAILS_ENABLED", "true").lower() == "true"
 
-# Capa rápida basada en reglas: patrones que nunca deberían aparecer en una
-# respuesta legítima del tutor (intentos de fuga de instrucciones, etc.).
+
 BANNED_PATTERNS = [
     "ignora tus instrucciones",
     "ignora las instrucciones anteriores",
